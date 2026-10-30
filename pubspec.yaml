@@ -1,0 +1,24 @@
+name: connectvertix
+description: Protótipo Flutter Web e Android para a comunidade Univértix.
+publish_to: none
+version: 1.3.0+4
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.3.2
+  image_picker: ^1.1.2
+  image: ^4.2.0
+  flutter_localizations:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

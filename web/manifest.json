@@ -1,0 +1,9 @@
+{
+  "name": "ConnectVertix",
+  "short_name": "ConnectVertix",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FAF9FD",
+  "theme_color": "#35548B",
+  "description": "Meu Campus Univértix"
+}
