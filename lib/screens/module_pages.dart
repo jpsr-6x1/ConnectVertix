@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../app_store.dart';
+import '../models.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'forms.dart';
@@ -156,14 +156,12 @@ class FoundPage extends StatelessWidget {
                 if (store.isLeader || store.currentUser?.id == item.authorId)
                   DeleteAction(onPressed: () => _tryDelete(context, () => store.removeFoundItem(item.id))),
               ]),
-              if (item.imageBase64 != null) ...[
+              if (item.imageUrl != null) ...[
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(15),
-                  child: Image.memory(
-                    base64Decode(item.imageBase64!),
-                    height: 200,
-                    width: double.infinity,
+                  child: Image.network(
+                    item.imageUrl!, height: 200, width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Text('Imagem indisponível.'),
                   ),
@@ -173,14 +171,7 @@ class FoundPage extends StatelessWidget {
               Text(item.description),
               DetailRow(icon: Icons.place_outlined, text: 'Deixado em: ${item.location}'),
               DetailRow(icon: Icons.person_outline, text: 'Publicado por ${item.authorName} · ${formatDate(item.createdAt)}'),
-              if (store.isLeader || store.currentUser?.id == item.authorId) ...[
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Confirmar retirada pelo dono'),
-                  onPressed: () => _confirmFoundRetrieval(context, store, item.id),
-                ),
-              ],
+              ..._foundClaimActions(context,store,item),
             ])),
             const SizedBox(height: 12),
           ],
@@ -190,36 +181,62 @@ class FoundPage extends StatelessWidget {
   );
 }
 
-Future<void> _confirmFoundRetrieval(BuildContext context, AppStore store, String id) async {
-  final owner = await showDialog<String>(
-    context: context,
-    builder: (dialogContext) {
-      var name = '';
-      return AlertDialog(
-        title: const Text('Confirmar devolução'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Confirme apenas depois de entregar pessoalmente o objeto ao dono. O item sairá da lista de disponíveis.'),
-          const SizedBox(height: 12),
-          TextField(
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: fieldDecoration('Nome de quem retirou'),
-            onChanged: (value) => name = value,
-          ),
+/// O dono solicita, quem achou aprova e o próprio dono confirma
+/// depois da entrega. A regra também é validada pelo banco.
+List<Widget> _foundClaimActions(BuildContext context, AppStore store, FoundItem item) {
+  final isFinder = store.isLeader || store.currentUser?.id == item.authorId;
+  final claims = store.claimsFor(item.id);
+  final mine = store.myClaimFor(item.id);
+  if (isFinder) {
+    return [
+      if (claims.isNotEmpty) const SizedBox(height: 14),
+      if (claims.isNotEmpty) const Text('Solicitações de retirada:',style:TextStyle(fontWeight:FontWeight.w700)),
+      for (final claim in claims) ...[
+        const SizedBox(height: 8),
+        Text('${claim.claimantName} — ${claim.status}'),
+        if (claim.status == 'pendente') Wrap(spacing:8,children:[
+          OutlinedButton(onPressed:() => _foundAction(context,
+            () => store.reviewFoundClaim(item.id,claim.claimantId,true),
+            'Solicitação aprovada. Entregue o item ao solicitante.'),child:const Text('Aprovar')),
+          TextButton(onPressed:() => _foundAction(context,
+            () => store.reviewFoundClaim(item.id,claim.claimantId,false),
+            'Solicitação recusada.'),child:const Text('Recusar')),
         ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, name), child: const Text('Confirmar entrega')),
-        ],
-      );
-    },
-  );
-  if (owner == null) return;
-  try {
-    await store.confirmFoundItemRetrieved(id, owner);
-    if (context.mounted) showInfo(context, 'Retirada confirmada. O item saiu dos achados e perdidos.');
-  } on AppMessage catch (error) {
-    if (context.mounted) showInfo(context, error.message);
+      ],
+    ];
+  }
+  if (mine?.status == 'aprovada') {
+    return [const SizedBox(height:14),FilledButton.icon(
+      onPressed:() => _confirmMyPickup(context,store,item.id),
+      icon:const Icon(Icons.check_circle_outline),
+      label:const Text('Já recebi o item — confirmar retirada'),
+    )];
+  }
+  return [const SizedBox(height:14),
+    if (mine?.status == 'pendente') const Pill('Seu pedido aguarda aprovação')
+    else OutlinedButton.icon(
+      onPressed:() => _foundAction(context,() => store.requestFoundItem(item.id),
+        'Pedido enviado para quem cadastrou o objeto.'),
+      icon:const Icon(Icons.pan_tool_alt_outlined),
+      label:Text(mine?.status == 'recusada' ? 'Solicitar novamente' : 'Sou o dono — solicitar retirada'),
+    )];
+}
+
+Future<void> _foundAction(BuildContext context,Future<void> Function() action,String success) async {
+  try { await action(); if (context.mounted) showInfo(context,success); }
+  on AppMessage catch(e) { if(context.mounted) showInfo(context,e.message); }
+}
+Future<void> _confirmMyPickup(BuildContext context,AppStore store,String id) async {
+  final confirm = await showDialog<bool>(context:context,builder:(ctx) => AlertDialog(
+    title:const Text('Confirmar que recebeu o objeto?'),
+    content:const Text('Confirme apenas depois da entrega. O item vai sumir da lista de achados e perdidos em todos os dispositivos.'),
+    actions:[
+      TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Cancelar')),
+      FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Já recebi')),
+    ],
+  ));
+  if (confirm == true && context.mounted) {
+    await _foundAction(context,() => store.confirmMyFoundPickup(id),'Retirada confirmada!');
   }
 }
 

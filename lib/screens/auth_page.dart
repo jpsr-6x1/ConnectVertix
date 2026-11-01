@@ -14,6 +14,7 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   String? _course;
   bool _register = false;
@@ -23,6 +24,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void dispose() {
     _name.dispose();
+    _email.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -32,9 +34,9 @@ class _AuthPageState extends State<AuthPage> {
     setState(() => _loading = true);
     try {
       if (_register) {
-        await widget.store.register(_name.text, _password.text, course: _course ?? '');
+        await widget.store.register(_name.text, _email.text, _password.text, course: _course ?? '');
       } else {
-        await widget.store.login(_name.text, _password.text);
+        await widget.store.login(_email.text, _password.text);
       }
     } on AppMessage catch (e) {
       if (mounted) showInfo(context, e.message);
@@ -73,14 +75,25 @@ class _AuthPageState extends State<AuthPage> {
                     Text(_register ? 'Crie sua conta' : 'Bem-vindo de volta!',
                         style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 7),
-                    Text(_register ? 'Escolha seu curso, nome e senha para começar.' : 'Entre com seu nome e sua senha.',
+                    Text(_register ? 'Informe nome, e-mail, curso e senha.' : 'Entre com seu e-mail e senha.',
                         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                     const SizedBox(height: 24),
+                    if (_register) ...[
+                      TextFormField(
+                        controller: _name,
+                        decoration: fieldDecoration('Nome de exibição', hint: 'Ex.: Ana Silva'),
+                        textInputAction: TextInputAction.next,
+                        validator: requiredField,
+                      ),
+                      const SizedBox(height: 14),
+                    ],
                     TextFormField(
-                      controller: _name,
-                      decoration: fieldDecoration('Nome de usuário', hint: 'Ex.: ana.silva'),
-                      textInputAction: TextInputAction.next,
-                      validator: requiredField,
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
+                      decoration: fieldDecoration('E-mail', hint: 'Ex.: aluno@exemplo.com'),
+                      validator: (value) => value != null && value.contains('@') && value.contains('.')
+                          ? null : 'Informe um e-mail válido.',
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -92,7 +105,7 @@ class _AuthPageState extends State<AuthPage> {
                           onPressed: () => setState(() => _hidden = !_hidden),
                         ),
                       ),
-                      validator: (value) => value == null || value.length < 4 ? 'A senha deve ter pelo menos 4 caracteres.' : null,
+                      validator: (value) => value == null || value.length < 8 ? 'Use uma senha com pelo menos 8 caracteres.' : null,
                       onFieldSubmitted: (_) => _submit(),
                     ),
                     if (_register) ...[
@@ -123,7 +136,7 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                   ])),
                   const SizedBox(height: 22),
-                  Text('Projeto demonstrativo para a Univértix · Matipó',
+                  Text('Contas e dados sincronizados entre dispositivos · Univértix',
                     textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
                 ]),
               ),

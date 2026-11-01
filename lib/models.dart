@@ -1,41 +1,14 @@
-// Entidades do protótipo. Dados são serializados em JSON no navegador.
+// Modelos de leitura do Supabase (sem senhas locais).
 class UserAccount {
-  UserAccount({
-    required this.id,
-    required this.name,
-    required this.password,
-    this.role = 'aluno',
-    this.requestStatus = 'nenhuma',
-    this.course,
-  });
-
+  UserAccount({required this.id, required this.name,
+    this.role = 'aluno', this.requestStatus = 'nenhuma', this.course});
   final String id;
   final String name;
-  final String password;
-  String role; // aluno, professor ou lider
-  String requestStatus; // nenhuma, pendente, recusada, aprovada
-  String? course; // curso escolhido no cadastro; líder não possui curso
-
+  final String role;
+  final String requestStatus;
+  final String? course;
   bool get isLeader => role == 'lider';
   bool get canManage => role == 'professor' || role == 'lider';
-
-  factory UserAccount.fromJson(Map<String, dynamic> map) => UserAccount(
-        id: map['id'] as String,
-        name: map['name'] as String,
-        password: map['password'] as String,
-        role: map['role'] as String? ?? 'aluno',
-        requestStatus: map['requestStatus'] as String? ?? 'nenhuma',
-        course: map['course'] as String?,
-      );
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'password': password,
-        'role': role,
-        'requestStatus': requestStatus,
-        'course': course,
-      };
 }
 
 class Reservation {
@@ -132,6 +105,7 @@ class FoundItem {
     required this.authorName,
     required this.createdAt,
     this.imageBase64,
+    this.imageUrl,
     this.retrievedAt,
     this.retrievedByName,
   });
@@ -143,7 +117,8 @@ class FoundItem {
   final String authorId;
   final String authorName;
   final DateTime createdAt;
-  String? imageBase64; // imagem JPEG compactada, salva localmente
+  String? imageBase64; // Usado apenas no formulário de envio.
+  String? imageUrl; // URL assinada, temporária, do armazenamento privado
   DateTime? retrievedAt;
   String? retrievedByName;
   bool get isAvailable => retrievedAt == null;
@@ -157,6 +132,7 @@ class FoundItem {
         authorName: m['authorName'] as String,
         createdAt: DateTime.parse(m['createdAt'] as String),
         imageBase64: m['imageBase64'] as String?,
+        imageUrl: m['imageUrl'] as String?,
         retrievedAt: m['retrievedAt'] == null ? null : DateTime.parse(m['retrievedAt'] as String),
         retrievedByName: m['retrievedByName'] as String?,
       );
@@ -170,6 +146,7 @@ class FoundItem {
         'authorName': authorName,
         'createdAt': createdAt.toIso8601String(),
         'imageBase64': imageBase64,
+        'imageUrl': imageUrl,
         'retrievedAt': retrievedAt?.toIso8601String(),
         'retrievedByName': retrievedByName,
       };
@@ -276,4 +253,13 @@ class CampusEvent {
         'location': location,
         'authorId': authorId,
       };
+}
+
+class FoundClaim {
+  FoundClaim({required this.itemId, required this.claimantId,
+    required this.status, required this.claimantName});
+  final String itemId;
+  final String claimantId;
+  final String status;
+  final String claimantName;
 }
