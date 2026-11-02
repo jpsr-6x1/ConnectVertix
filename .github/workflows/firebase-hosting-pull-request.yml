@@ -30,7 +30,13 @@ jobs:
         run: flutter pub get
 
       - name: Compilar Flutter Web
-        run: flutter build web --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          flutter build web --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY"
 
       - name: Publicar previa no Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
