@@ -263,3 +263,20 @@ class FoundClaim {
   final String status;
   final String claimantName;
 }
+
+
+/// Entrada de calendário persistida e filtrada pelo Supabase RLS.
+class AgendaItem {
+  const AgendaItem({required this.id, required this.title, required this.kind,
+    required this.date, required this.description, required this.authorId,
+    this.time, this.targetCourse});
+  final String id;
+  final String title;
+  final String kind;
+  final DateTime date;
+  final String description;
+  final String authorId;
+  final String? time;
+  final String? targetCourse;
+  bool get isGeneral => targetCourse == null;
+}

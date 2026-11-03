@@ -3,6 +3,7 @@ import '../app_store.dart';
 import '../theme.dart';
 import '../ui.dart';
 import 'course_selector.dart';
+import 'dashboard.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.store});
@@ -45,6 +46,29 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    final email = TextEditingController(text:_email.text.trim());
+    final result = await showDialog<String>(context:context,builder:(ctx) => AlertDialog(
+      title:const Text('Recuperar senha'),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Text('Informe o e-mail da sua conta para receber o link de recuperação.'),
+        const SizedBox(height:14),
+        TextField(controller:email,keyboardType:TextInputType.emailAddress,
+          decoration:const InputDecoration(labelText:'E-mail')),
+      ]),
+      actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('Cancelar')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,email.text.trim()),child:const Text('Enviar link')),
+      ],
+    ));
+    email.dispose();
+    if (result == null || !mounted) return;
+    try {
+      await widget.store.sendPasswordReset(result);
+      if (mounted) showInfo(context,'Se o e-mail estiver cadastrado, você receberá um link de recuperação.');
+    } on AppMessage catch(e) { if (mounted) showInfo(context,e.message); }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         body: SafeArea(
@@ -56,19 +80,10 @@ class _AuthPageState extends State<AuthPage> {
                 key: _form,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   const SizedBox(height: 30),
-                  Center(
-                    child: Container(
-                      width: 82,
-                      height: 82,
-                      decoration: BoxDecoration(color: CampusColors.lavenderBlue, borderRadius: BorderRadius.circular(27)),
-                      child: const Icon(Icons.school_outlined, color: CampusColors.navyDark, size: 42),
-                    ),
-                  ),
+                  Center(child:ConnectVertixLogo(large:true)),
                   const SizedBox(height: 20),
-                  Text('ConnectVertix', textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
                   const SizedBox(height: 6),
-                  Text('Seu campus, tudo em um só lugar.', textAlign: TextAlign.center,
+                  Text('Sua rotina acadêmica em um só lugar.', textAlign: TextAlign.center,
                       style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15)),
                   const SizedBox(height: 34),
                   SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -126,6 +141,14 @@ class _AuthPageState extends State<AuthPage> {
                             : Text(_register ? 'Criar conta' : 'Entrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       ),
                     ),
+                    if (!_register) Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed:_loading ? null : _forgotPassword,
+                        icon:const Icon(Icons.lock_reset_outlined, size:18),
+                        label:const Text('Esqueci minha senha'),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
@@ -135,9 +158,7 @@ class _AuthPageState extends State<AuthPage> {
                       child: Text(_register ? 'Já tem conta? Entrar' : 'Não tem conta? Cadastre-se'),
                     ),
                   ])),
-                  const SizedBox(height: 22),
-                  Text('Contas e dados sincronizados entre dispositivos · Univértix',
-                    textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+
                 ]),
               ),
             ),

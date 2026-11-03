@@ -1,4 +1,4 @@
-// Lista demonstrativa, editável conforme os cursos reais da Univértix.
+// Cursos iniciais de referência; o catálogo válido vem do Supabase.
 const campusCourses = <String>[
   'Administração',
   'Ciência da Computação',

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 // Paleta inspirada na referência da Univértix.
 class CampusColors {
-  static const navy = Color(0xFF35548B);
-  static const navyDark = Color(0xFF233D6D);
-  static const bg = Color(0xFFFAF9FD);
+  static const navy = Color(0xFF0E3A8A);
+  static const red = Color(0xFFE11D2E);
+  static const navyDark = Color(0xFF0A2B70);
+  static const bg = Color(0xFFF4F6FA);
   static const ink = Color(0xFF161923);
   static const muted = Color(0xFF6F7280);
   static const line = Color(0xFFE5E5EC);
@@ -21,17 +22,18 @@ ThemeData campusDarkTheme() => _createTheme(Brightness.dark);
 ThemeData _createTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
   final scheme = ColorScheme.fromSeed(
-    seedColor: dark ? const Color(0xFF9DB8F8) : CampusColors.navy,
+    seedColor: dark ? const Color(0xFF8BB2FF) : CampusColors.navy,
     brightness: brightness,
-    surface: dark ? const Color(0xFF090909) : CampusColors.bg,
+    surface: dark ? const Color(0xFF000000) : CampusColors.bg,
   );
   final bg = dark ? const Color(0xFF000000) : CampusColors.bg;
-  final fill = dark ? const Color(0xFF151515) : Colors.white;
+  final fill = dark ? const Color(0xFF171D29) : Colors.white;
   final border = dark ? const Color(0xFF333333) : CampusColors.line;
-  final primary = dark ? const Color(0xFF8FADEB) : CampusColors.navy;
+  final primary = dark ? const Color(0xFF89B2FF) : CampusColors.navy;
   return ThemeData(
     useMaterial3: true,
     scaffoldBackgroundColor: bg,
+    dividerColor: dark?const Color(0xFF2C3444):CampusColors.line,
     colorScheme: scheme,
     appBarTheme: AppBarTheme(
       backgroundColor: bg,
@@ -59,7 +61,7 @@ ThemeData _createTheme(Brightness brightness) {
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: primary,
-        foregroundColor: dark ? Colors.black : Colors.white,
+        foregroundColor: dark ? const Color(0xFF07142B) : Colors.white,
         minimumSize: const Size(0, 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

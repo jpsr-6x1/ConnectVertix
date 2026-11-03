@@ -9,9 +9,9 @@ String formatMinutes(int minutes) =>
 
 String getGreeting() {
   final hour = DateTime.now().hour;
-  if (hour < 12) return 'Bom dia!';
-  if (hour < 18) return 'Boa tarde!';
-  return 'Boa noite!';
+  if (hour < 12) return 'Bom dia,';
+  if (hour < 18) return 'Boa tarde,';
+  return 'Boa noite,';
 }
 
 void showInfo(BuildContext context, String message) {
@@ -59,8 +59,8 @@ class SoftCard extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
     final plain = color == Colors.white || color == CampusColors.neutral;
     final cardColor = dark
-        ? (plain ? const Color(0xFF151515)
-            : Color.lerp(color, const Color(0xFF161616), .78)!)
+        ? (plain ? const Color(0xFF161D29)
+            : Color.lerp(color, const Color(0xFF161D29), .78)!)
         : color;
     return Container(
       width: double.infinity,

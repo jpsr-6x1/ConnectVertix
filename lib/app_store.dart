@@ -25,6 +25,10 @@ class AppStore extends ChangeNotifier {
   bool _refreshing = false;
   bool _again = false;
   bool _darkMode = false;
+  double _textScale = 1.0;
+  double get textScale => _textScale;
+  bool _passwordRecoveryPending = false;
+  bool get passwordRecoveryPending => _passwordRecoveryPending;
   bool get darkMode => _darkMode;
 
   final List<UserAccount> users = [];
@@ -34,9 +38,11 @@ class AppStore extends ChangeNotifier {
   final List<FoundClaim> foundClaims = [];
   final List<RideOffer> rides = [];
   final List<CampusEvent> events = [];
+  final List<AgendaItem> agendaItems = [];
   final List<String> rooms = [];
   final List<String> courses = [];
   String? get _uid => _db.auth.currentUser?.id;
+  String? get currentEmail => _db.auth.currentUser?.email;
   UserAccount? get currentUser {
     for (final user in users) { if (user.id == _uid) return user; }
     return null;
@@ -57,7 +63,12 @@ class AppStore extends ChangeNotifier {
   static Future<AppStore> load() async {
     final store = AppStore._(await SharedPreferences.getInstance());
     store._darkMode = store._prefs.getBool('connectvertix_dark_theme') ?? false;
-    store._authSubscription = store._db.auth.onAuthStateChange.listen((_) async {
+    store._textScale = (store._prefs.getDouble('connectvertix_text_scale') ?? 1).clamp(.85, 1.35).toDouble();
+    store._authSubscription = store._db.auth.onAuthStateChange.listen((authState) async {
+      if (authState.event == AuthChangeEvent.passwordRecovery) {
+        store._passwordRecoveryPending = true;
+        store.notifyListeners();
+      }
       store._attachRealtime();
       await store.refresh();
     }, onError: (Object error, StackTrace stack) {
@@ -77,7 +88,8 @@ class AppStore extends ChangeNotifier {
       'profiles':['id'], 'courses':['name'], 'rooms':['name'],
       'reservations':['id'], 'notices':['id'], 'found_items':['id'],
       'found_item_claims':['item_id','claimant_id'], 'rides':['id'],
-      'ride_bookings':['ride_id','user_id'], 'events':['id']
+      'ride_bookings':['ride_id','user_id'], 'events':['id'],
+      'agenda_items':['id']
     };
     for (final entry in tables.entries) {
       final subscription = _db.from(entry.key).stream(primaryKey: entry.value).listen(
@@ -105,13 +117,13 @@ class AppStore extends ChangeNotifier {
       courses..clear()..addAll(courseRows.map((e) => e['name'] as String));
       if (_uid == null) {
         users.clear(); reservations.clear(); notices.clear(); rooms.clear();
-        foundItems.clear(); foundClaims.clear(); rides.clear(); events.clear();
+        foundItems.clear(); foundClaims.clear(); rides.clear(); events.clear(); agendaItems.clear();
         notifyListeners(); return;
       }
       final rows = await Future.wait([
         _all('profiles'), _all('rooms'), _all('reservations'), _all('notices'),
         _all('found_items'), _all('found_item_claims'), _all('rides'),
-        _all('ride_bookings'), _all('events')
+        _all('ride_bookings'), _all('events'), _all('agenda_items')
       ]);
       users..clear()..addAll(rows[0].map((m) => UserAccount(
         id:m['id'] as String, name:m['display_name'] as String,
@@ -160,6 +172,13 @@ class AppStore extends ChangeNotifier {
         'date':m['event_date'],'time':m['event_time'],'location':m['location'],
         'authorId':m['author_id']
       })));
+      agendaItems..clear()..addAll(rows[9].map((m) => AgendaItem(
+        id:m['id'] as String, title:m['title'] as String,
+        kind:m['kind'] as String, date:DateTime.parse(m['on_date'] as String),
+        description:m['description'] as String? ?? '',
+        time:m['at_time'] as String?, targetCourse:m['target_course'] as String?,
+        authorId:m['author_id'] as String,
+      )));
       notifyListeners();
     } catch (e) {
       debugPrint('Erro de sincronização: $e');
@@ -203,6 +222,66 @@ class AppStore extends ChangeNotifier {
   Future<void> setDarkMode(bool value) async {
     _darkMode=value; await _prefs.setBool('connectvertix_dark_theme',value); notifyListeners();
   }
+  Future<void> setTextScale(double scale) async {
+    _textScale = scale.clamp(.85, 1.35).toDouble();
+    await _prefs.setDouble('connectvertix_text_scale', _textScale);
+    notifyListeners();
+  }
+
+  /// Envia o link pelo Supabase Auth; o dominio precisa constar nas URLs permitidas.
+  Future<void> sendPasswordReset(String email) async {
+    final normalized = email.trim();
+    if (!normalized.contains('@')) throw const AppMessage('Informe seu e-mail.');
+    try {
+      await _db.auth.resetPasswordForEmail(normalized,
+        redirectTo: kIsWeb ? Uri.base.origin : null);
+    } on AuthException catch (e) { throw AppMessage(e.message); }
+  }
+
+  Future<void> changePassword(String password) async {
+    if (password.length < 8) throw const AppMessage('A senha deve ter pelo menos 8 caracteres.');
+    try {
+      await _db.auth.updateUser(UserAttributes(password:password));
+      _passwordRecoveryPending = false;
+      notifyListeners();
+    } on AuthException catch (e) { throw AppMessage(e.message); }
+  }
+
+  Future<void> updateMyProfile({required String name, String? course, String? email}) async {
+    final cleanName = name.trim();
+    if (cleanName.length < 3) throw const AppMessage('Informe um nome com pelo menos 3 letras.');
+    final me = currentUser;
+    if (me == null) throw const AppMessage('Faça login novamente.');
+    if (!me.isLeader && (course == null || !courses.contains(course))) {
+      throw const AppMessage('Selecione um curso válido.');
+    }
+    await _run(() => _db.from('profiles').update({
+      'display_name': cleanName,
+      if (!me.isLeader) 'course': course,
+    }).eq('id', _requireUser()));
+    final newEmail = email?.trim();
+    if (newEmail != null && newEmail.isNotEmpty && newEmail != _db.auth.currentUser?.email) {
+      try { await _db.auth.updateUser(UserAttributes(email:newEmail)); }
+      on AuthException catch(e) { throw AppMessage('Nome salvo; não foi possível alterar e-mail: ${e.message}'); }
+    }
+  }
+
+  Future<void> addAgendaItem({required String title, required String kind,
+    required DateTime date, required String description, String? time, String? targetCourse}) async {
+    _requireProfessor();
+    if (title.trim().isEmpty) throw const AppMessage('Informe o título da atividade.');
+    if (targetCourse != null && !courses.contains(targetCourse)) throw const AppMessage('Curso inválido.');
+    await _run(() => _db.from('agenda_items').insert({
+      'title': title.trim(), 'kind':kind, 'on_date':_date(date),
+      'description':description.trim(), 'at_time':time,
+      'target_course':targetCourse,'author_id':_requireUser()
+    }));
+  }
+  Future<void> removeAgendaItem(String id) async {
+    _requireProfessor();
+    await _run(() => _db.from('agenda_items').delete().eq('id',id));
+  }
+
   Future<void> updateCourse(String course) async {
     if (!courses.contains(course)) throw const AppMessage('Curso inválido.');
     await _run(() => _db.from('profiles').update({'course':course}).eq('id',_requireUser()));

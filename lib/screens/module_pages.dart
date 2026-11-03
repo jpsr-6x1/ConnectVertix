@@ -370,7 +370,7 @@ class RidePage extends StatelessWidget {
         ],
       ]);
       if (!embedded) {
-        return ModuleLayout(title: 'Complexo x Centro',
+        return ModuleLayout(title: 'Caronas',
           subtitle: 'Caronas saindo do Centro ou do Complexo.', body: content);
       }
       return CenterColumn(child: ListView(

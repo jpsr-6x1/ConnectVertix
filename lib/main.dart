@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_store.dart';
 import 'screens/auth_page.dart';
 import 'screens/dashboard.dart';
+import 'screens/profile_page.dart';
 import 'theme.dart';
 
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -47,7 +48,13 @@ class _ConnectVertixAppState extends State<ConnectVertixApp> {
           GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],
         theme:campusTheme(),darkTheme:campusDarkTheme(),
         themeMode:store.darkMode ? ThemeMode.dark : ThemeMode.light,
-        home:store.currentUser == null ? AuthPage(store:store) : DashboardPage(store:store),
+        builder:(context,child) => MediaQuery(
+          data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(store.textScale)),
+          child:child ?? const SizedBox.shrink(),
+        ),
+        home:store.passwordRecoveryPending
+          ? PasswordRecoveryPage(store:store)
+          : (store.currentUser == null ? AuthPage(store:store) : DashboardPage(store:store)),
       ));
     });
 }

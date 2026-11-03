@@ -3,393 +3,334 @@ import '../app_store.dart';
 import '../models.dart';
 import '../theme.dart';
 import '../ui.dart';
+import 'agenda_page.dart';
 import 'module_pages.dart';
 import 'permissions_page.dart';
-import 'rooms_page.dart';
-import 'course_page.dart';
+import 'profile_page.dart';
+
+class ConnectVertixMark extends StatelessWidget {
+  const ConnectVertixMark({super.key,this.size=34});
+  final double size;
+  @override Widget build(BuildContext context)=>SizedBox(width:size,height:size,
+    child:CustomPaint(painter:_VertixMarkPainter()));
+}
+class _VertixMarkPainter extends CustomPainter {
+  @override void paint(Canvas canvas, Size size) {
+    final scale=Size(size.width,size.height);
+    final blue=Paint()..color=CampusColors.navy;
+    final red=Paint()..color=CampusColors.red;
+    final left=Path()
+      ..moveTo(scale.width*.04,scale.height*.13)
+      ..lineTo(scale.width*.31,scale.height*.13)
+      ..lineTo(scale.width*.55,scale.height*.69)
+      ..lineTo(scale.width*.69,scale.height*.42)
+      ..lineTo(scale.width*.85,scale.height*.42)
+      ..lineTo(scale.width*.55,scale.height*.98)
+      ..close();
+    final right=Path()
+      ..moveTo(scale.width*.60,scale.height*.30)
+      ..lineTo(scale.width*.73,scale.height*.08)
+      ..lineTo(scale.width*.98,scale.height*.08)
+      ..lineTo(scale.width*.73,scale.height*.55)
+      ..close();
+    canvas.drawPath(left,blue);
+    canvas.drawPath(right,red);
+  }
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate)=>false;
+}
+
+class ConnectVertixLogo extends StatelessWidget {
+  const ConnectVertixLogo({super.key,this.large=false});
+  final bool large;
+  @override Widget build(BuildContext context) => Row(mainAxisSize:MainAxisSize.min,children:[
+    ConnectVertixMark(size:large?43:32),
+    const SizedBox(width:9),
+    Text.rich(TextSpan(children:[
+      TextSpan(text:'Connect',style:TextStyle(color:Theme.of(context).brightness==Brightness.dark?Colors.white:CampusColors.navy)),
+      const TextSpan(text:'Vertix',style:TextStyle(color:CampusColors.red)),
+    ]),style:TextStyle(fontSize:large?27:20,fontWeight:FontWeight.w900)),
+  ]);
+}
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key, required this.store});
+  const DashboardPage({super.key,required this.store});
   final AppStore store;
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  @override State<DashboardPage> createState()=>_DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int _tab = 0;
+  int _tab=0;
+  void _open(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>page));
+  void _select(int tab)=>setState(()=>_tab=tab);
 
-  void _open(Widget page) => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => page),
-      );
+  @override Widget build(BuildContext context) => LayoutBuilder(builder:(context,constraints){
+    final desktop=constraints.maxWidth>=900;
+    final body=IndexedStack(index:_tab,children:[
+      _home(),AgendaPage(store:widget.store),
+      RidePage(store:widget.store,embedded:true,onBack:()=>_select(0)),
+      EventsPage(store:widget.store),ProfilePage(store:widget.store),
+    ]);
+    return Scaffold(
+      body:SafeArea(child:desktop ? Row(children:[
+        _sidebar(),
+        Expanded(child:body),
+      ]) : body),
+      bottomNavigationBar:desktop?null:_bottomNav(),
+    );
+  });
+
+  Widget _sidebar() {
+    final dark=Theme.of(context).brightness==Brightness.dark;
+    return Container(width:238,padding:const EdgeInsets.fromLTRB(14,24,14,14),
+      decoration:BoxDecoration(color:dark?const Color(0xFF0C1019):Colors.white,
+        border:Border(right:BorderSide(color:dark?const Color(0xFF202A3A):CampusColors.line))),
+      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Padding(padding:const EdgeInsets.fromLTRB(8,4,0,29),child:ConnectVertixLogo()),
+        _sideItem(Icons.home_outlined,'Início',0),
+        _sideItem(Icons.calendar_today_outlined,'Reservas',null,()=>_open(ReservationPage(store:widget.store))),
+        _sideItem(Icons.campaign_outlined,'Mural de avisos',null,()=>_open(NoticePage(store:widget.store))),
+        _sideItem(Icons.search_outlined,'Achados e perdidos',null,()=>_open(FoundPage(store:widget.store))),
+        _sideItem(Icons.directions_car_outlined,'Caronas',2),
+        _sideItem(Icons.confirmation_num_outlined,'Eventos',3),
+        _sideItem(Icons.event_note_outlined,'Agenda',1),
+        _sideItem(Icons.person_outline,'Perfil',4),
+        const Spacer(),
+        const Divider(),
+        _sideItem(Icons.verified_user_outlined,'Permissões',null,()=>_open(PermissionsPage(store:widget.store))),
+        _sideItem(Icons.logout,'Sair',null,()=>widget.store.logout()),
+      ]));
+  }
+
+  Widget _sideItem(IconData icon,String label,int? tab,[VoidCallback? action]){
+    final selected=tab!=null&&tab==_tab;
+    final dark=Theme.of(context).brightness==Brightness.dark;
+    return Padding(padding:const EdgeInsets.symmetric(vertical:2),child:Material(
+      color:selected?(dark?CampusColors.red:CampusColors.navy):Colors.transparent,
+      borderRadius:BorderRadius.circular(12),child:InkWell(borderRadius:BorderRadius.circular(12),
+      onTap:action??()=>_select(tab??0),child:Padding(padding:const EdgeInsets.symmetric(horizontal:12,vertical:13),
+      child:Row(children:[Icon(icon,size:21,color:selected?Colors.white:null),const SizedBox(width:11),
+        Expanded(child:Text(label,style:TextStyle(fontWeight:selected?FontWeight.w700:FontWeight.w500,
+          color:selected?Colors.white:null)))]))),
+    ));
+  }
+
+  Widget _bottomNav(){
+    final dark=Theme.of(context).brightness==Brightness.dark;
+    return Container(
+      decoration:BoxDecoration(color:dark?const Color(0xFF10141C):Colors.white,
+        border:Border(top:BorderSide(color:dark?const Color(0xFF232C3B):CampusColors.line))),
+      child:SafeArea(top:false,child:NavigationBar(height:69,
+        labelBehavior:NavigationDestinationLabelBehavior.alwaysShow,
+        backgroundColor:Colors.transparent,indicatorColor:dark?const Color(0xFF692233):CampusColors.lavenderBlue,
+        selectedIndex:_tab,
+        onDestinationSelected:_select,destinations:const [
+          NavigationDestination(icon:Icon(Icons.home_outlined),selectedIcon:Icon(Icons.home),label:'Início'),
+          NavigationDestination(icon:Icon(Icons.event_note_outlined),selectedIcon:Icon(Icons.event_note),label:'Agenda'),
+          NavigationDestination(icon:Icon(Icons.directions_car_outlined),selectedIcon:Icon(Icons.directions_car),label:'Caronas'),
+          NavigationDestination(icon:Icon(Icons.confirmation_num_outlined),selectedIcon:Icon(Icons.confirmation_num),label:'Eventos'),
+          NavigationDestination(icon:Icon(Icons.person_outline),selectedIcon:Icon(Icons.person),label:'Perfil'),
+        ])),
+    );
+  }
+
+  Widget _home(){
+    final store=widget.store;
+    final dark=Theme.of(context).brightness==Brightness.dark;
+    final user=store.currentUser;
+    final upcoming=store.events.where((e)=>!e.date.isBefore(DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day))).toList()
+      ..sort((a,b)=>a.date.compareTo(b.date));
+    final next=upcoming.isEmpty?null:upcoming.first;
+    final notices=store.visibleNotices.toList()..sort((a,b)=>b.createdAt.compareTo(a.createdAt));
+    final agenda=store.agendaItems.where((e)=>!e.date.isBefore(DateTime(DateTime.now().year,DateTime.now().month,DateTime.now().day))).toList()
+      ..sort((a,b)=>a.date.compareTo(b.date));
+    return CenterColumn(maxWidth:1250,child:ListView(padding:const EdgeInsets.fromLTRB(20,22,20,45),children:[
+      Row(children:[
+        if(MediaQuery.sizeOf(context).width<900) ...[
+          CircleAvatar(backgroundColor:CampusColors.lavenderBlue,
+            child:Text(user?.name.isNotEmpty==true?user!.name[0].toUpperCase():'CV',style:const TextStyle(color:CampusColors.navy))),
+          const SizedBox(width:9),
+          const Expanded(child:ConnectVertixLogo()),
+        ] else const Expanded(child:ConnectVertixLogo()),
+        IconButton(tooltip:'Permissão de professor',onPressed:()=>_open(PermissionsPage(store:store)),
+          icon:Badge(isLabelVisible:store.isLeader&&store.pendingRequests.isNotEmpty,
+            child:const Icon(Icons.admin_panel_settings_outlined))),
+        IconButton(tooltip:'Avisos',onPressed:()=>_open(NoticePage(store:store)),
+          icon:Badge(isLabelVisible:notices.isNotEmpty,child:const Icon(Icons.notifications_none_outlined))),
+      ]),
+      const SizedBox(height:23),
+      Text('${getGreeting()} ${user?.name.split(' ').first ?? 'Aluno'}!',
+        style:const TextStyle(fontSize:27,fontWeight:FontWeight.w800)),
+      const SizedBox(height:3),
+      Text('Univértix · Matipó',style:TextStyle(color:Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(height:21),
+      EventHeroBanner(event:next,onOpenEvents:()=>_select(3)),
+      const SizedBox(height:25),
+      const SectionHeading('Acesso rápido'),
+      LayoutBuilder(builder:(context,box){
+        final columns=box.maxWidth>=1050?6:box.maxWidth>=650?3:2;
+        return GridView.count(physics:const NeverScrollableScrollPhysics(),shrinkWrap:true,
+          crossAxisCount:columns,crossAxisSpacing:11,mainAxisSpacing:11,
+          childAspectRatio: columns == 2 ? 0.95 : (columns == 3 ? 1.30 : 1.03),
+          children:[
+            _module(Icons.calendar_month_outlined,'Reservas','Laboratórios e salas',const Color(0xFFDCE8FF),CampusColors.navy,
+              ()=>_open(ReservationPage(store:store))),
+            _module(Icons.campaign_outlined,'Mural de avisos','Recados da coordenação',const Color(0xFFFFE5E7),CampusColors.red,
+              ()=>_open(NoticePage(store:store))),
+            _module(Icons.search_outlined,'Achados e perdidos','Itens encontrados',const Color(0xFFDDF6E8),const Color(0xFF137544),
+              ()=>_open(FoundPage(store:store))),
+            _module(Icons.directions_car_outlined,'Caronas','Caronas entre unidades',const Color(0xFFEDE1FE),const Color(0xFF6832AD),
+              ()=>_select(2)),
+            _module(Icons.confirmation_num_outlined,'Eventos','Programação',const Color(0xFFDCEAFE),const Color(0xFF1761B6),
+              ()=>_select(3)),
+            _module(Icons.event_note_outlined,'Agenda','Calendário acadêmico',const Color(0xFFFFE6DE),CampusColors.red,
+              ()=>_select(1)),
+          ]);
+      }),
+      const SizedBox(height:28),
+      LayoutBuilder(builder:(context,bounds){
+        final wide=bounds.maxWidth>740;
+        final left=_listBox('Avisos recentes',notices.take(3).map((n)=>(_noticeIcon(n),n.title,n.message)).toList(),
+          ()=>_open(NoticePage(store:store)));
+        final right=_listBox('Próximos itens da agenda',agenda.take(3).map((a)=>(Icons.event_outlined,a.title,
+          '${formatDate(a.date)} · ${a.targetCourse??'Geral'}')).toList(),()=>_select(1));
+        return wide?Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Expanded(child:left),const SizedBox(width:15),Expanded(child:right)]):Column(children:[left,const SizedBox(height:15),right]);
+      }),
+      if(dark) const SizedBox(height:2),
+    ]));
+  }
+
+  IconData _noticeIcon(Notice n)=>Icons.campaign_outlined;
+
+  Widget _module(IconData icon,String title,String subtitle,Color lightColor,Color accent,VoidCallback tap){
+    final dark=Theme.of(context).brightness==Brightness.dark;
+    return Material(color:dark?Color.lerp(accent,const Color(0xFF101722),.82):lightColor,
+      borderRadius:BorderRadius.circular(17),child:InkWell(onTap:tap,borderRadius:BorderRadius.circular(17),
+      child:Padding(padding:const EdgeInsets.all(13),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+        Icon(icon,color:dark?Color.lerp(accent,Colors.white,.45):accent,size:27),
+        const Spacer(),
+        Text(title,maxLines:2,overflow:TextOverflow.ellipsis,
+          style:const TextStyle(fontWeight:FontWeight.w800,fontSize:14)),
+        Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis,
+          style:const TextStyle(fontSize:11)),
+      ]))));
+  }
+
+  Widget _listBox(String heading,List<(IconData,String,String)> items,VoidCallback tap)=>
+    SoftCard(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Row(children:[Expanded(child:Text(heading,style:const TextStyle(fontSize:17,fontWeight:FontWeight.w800))),
+        TextButton(onPressed:tap,child:const Text('Ver todos'))]),
+      if(items.isEmpty) Padding(padding:const EdgeInsets.symmetric(vertical:23),
+        child:Text('Nenhuma publicação por enquanto.',style:TextStyle(color:Theme.of(context).colorScheme.onSurfaceVariant))),
+      for(final item in items) ...[
+        const Divider(height:12),
+        InkWell(onTap:tap,child:Padding(padding:const EdgeInsets.symmetric(vertical:7),
+          child:Row(children:[CircleAvatar(radius:20,backgroundColor:CampusColors.lavenderBlue,
+            child:Icon(item.$1,color:CampusColors.navy,size:21)),const SizedBox(width:12),
+            Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+              Text(item.$2,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w700)),
+              Text(item.$3,maxLines:1,overflow:TextOverflow.ellipsis,
+                style:TextStyle(fontSize:12,color:Theme.of(context).colorScheme.onSurfaceVariant)),
+            ])),const Icon(Icons.chevron_right,size:19)]))),
+      ],
+    ]));
+}
+
+/// Banner responsivo: a arte decorativa não é desenhada em telas estreitas.
+/// Em telas largas, o texto tem uma área própria, livre da forma vermelha.
+class EventHeroBanner extends StatelessWidget {
+  const EventHeroBanner({super.key, required this.event, required this.onOpenEvents});
+
+  final CampusEvent? event;
+  final VoidCallback onOpenEvents;
 
   @override
-  Widget build(BuildContext context) {
-    final store = widget.store;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(index: _tab, children: [
-          _home(store),
-          _agenda(store),
-          RidePage(
-            store: store,
-            embedded: true,
-            onBack: () => setState(() => _tab = 0),
-          ),
-          _profile(store),
-        ]),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      // O desenho só aparece quando existe espaço suficiente para texto e arte.
+      final showDecoration = constraints.maxWidth >= 800;
+      final textMaxWidth = showDecoration ? constraints.maxWidth - 250 : constraints.maxWidth;
+
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(22),
         child: Container(
-          decoration: BoxDecoration(
-            color: dark ? const Color(0xFF121212) : CampusColors.neutral,
-            border: Border(top: BorderSide(
-              color: dark ? const Color(0xFF303030) : CampusColors.line,
-            )),
-          ),
-          padding: const EdgeInsets.fromLTRB(8, 11, 8, 8),
-          // Importante: na bottomNavigationBar, CenterColumn usava Center,
-          // que se expandia na altura e empurrava o corpo da tela para fora.
-          // Align(heightFactor: 1) ocupa só a altura do menu.
-          child: Align(
-            alignment: Alignment.center,
-            heightFactor: 1,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 780),
-              child: Row(children: [
-                _navItem(0, Icons.home_outlined, 'Início'),
-                _navItem(1, Icons.calendar_month_outlined, 'Agenda'),
-                _navItem(2, Icons.directions_car_outlined, 'Caronas'),
-                _navItem(3, Icons.person_outline, 'Perfil'),
-              ]),
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF092D6C), Color(0xFF1759B0), Color(0xFF0A2454)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _navItem(int index, IconData icon, String label) {
-    final active = _tab == index;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () => setState(() => _tab = index),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 3),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
-              decoration: BoxDecoration(
-                color: active ? (dark ? const Color(0xFF242424) : CampusColors.lavenderBlue) : Colors.transparent,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Icon(icon, size: 25, color: active ? (dark ? const Color(0xFFB9CBFF) : CampusColors.navyDark) : Theme.of(context).colorScheme.onSurface),
-            ),
-            const SizedBox(height: 3),
-            Text(label, style: TextStyle(
-              fontSize: 12,
-              color: active ? (dark ? const Color(0xFFB9CBFF) : CampusColors.navyDark) : Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            )),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _home(AppStore store) {
-    final upcoming = store.events.where((e) =>
-        !DateTime(e.date.year, e.date.month, e.date.day).isBefore(
-          DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day),
-        )).toList()..sort((a, b) => a.date.compareTo(b.date));
-    final CampusEvent? next = upcoming.isEmpty ? null : upcoming.first;
-    final latest = store.visibleNotices..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    final user = store.currentUser!;
-    final trimmedName = user.name.trim();
-    final initials = trimmedName.isNotEmpty
-        ? trimmedName.substring(0, trimmedName.length >= 2 ? 2 : 1).toUpperCase()
-        : 'CV';
-    return CenterColumn(child: ListView(
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
-      children: [
-        Row(children: [
-          CircleAvatar(radius: 25, backgroundColor: CampusColors.lavenderBlue,
-              child: Text(initials, style: TextStyle(color: CampusColors.navyDark, fontWeight: FontWeight.w700, fontSize: 16))),
-          const SizedBox(width: 15),
-          Expanded(child: Text('Meu Campus', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700))),
-          Stack(clipBehavior: Clip.none, children: [
-            IconButton(
-              tooltip: store.isLeader ? 'Aprovar professores' : 'Solicitar permissão de professor',
-              onPressed: () => _open(PermissionsPage(store: store)),
-              icon: const Icon(Icons.verified_user_outlined, size: 27),
-            ),
-            if (store.isLeader && store.pendingRequests.isNotEmpty)
-              Positioned(right: 8, top: 5, child: Container(width: 9, height: 9,
-                decoration: const BoxDecoration(color: Color(0xFFCC3838), shape: BoxShape.circle))),
-          ]),
-          Stack(clipBehavior: Clip.none, children: [
-            IconButton(
-              tooltip: 'Avisos',
-              onPressed: () => _open(NoticePage(store: store)),
-              icon: const Icon(Icons.notifications_none_rounded, size: 29),
-            ),
-            if (store.visibleNotices.isNotEmpty)
-              Positioned(right: 8, top: 6, child: Container(width: 9, height: 9,
-                decoration: const BoxDecoration(color: Color(0xFFCC3838), shape: BoxShape.circle))),
-          ]),
-        ]),
-        const SizedBox(height: 28),
-        Text(getGreeting(), style: TextStyle(fontSize: 29, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 3),
-        Text('Univértix · Matipó', style: TextStyle(fontSize: 16, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 30),
-        Container(
-          decoration: BoxDecoration(color: CampusColors.navy, borderRadius: BorderRadius.circular(30)),
-          padding: const EdgeInsets.all(29),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('PRÓXIMO EVENTO', style: TextStyle(color: Color(0xFFE1E8F9), letterSpacing: 1.2, fontSize: 13, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 14),
-            Text(next?.title ?? 'Nenhum evento programado',
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 9),
-            Text(next == null ? 'Confira os eventos do campus.' : '${formatDate(next.date)} · ${next.time}',
-              style: TextStyle(color: Color(0xFFE2E9F6), fontSize: 15)),
-            const SizedBox(height: 22),
-            FilledButton(
-              onPressed: () => _open(EventsPage(store: store)),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: CampusColors.navyDark,
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 17),
-                shape: const StadiumBorder(),
-              ),
-              child: Text('Ver programação', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 30),
-        const SectionHeading('Módulos'),
-        LayoutBuilder(builder: (context, bounds) {
-          final count = bounds.maxWidth >= 760 ? 4 : 2;
-          return GridView.count(
-            crossAxisCount: count,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            mainAxisSpacing: 13,
-            crossAxisSpacing: 13,
-            childAspectRatio: count == 4 ? 1.03 : bounds.maxWidth < 540 ? 0.88 : 1.58,
+          child: Stack(
             children: [
-              _feature('Reservas', 'Laboratórios e salas', Icons.calendar_today_outlined,
-                  CampusColors.lavenderBlue, () => _open(ReservationPage(store: store))),
-              _feature('Mural de avisos', 'Recados da coordenação', Icons.campaign_outlined,
-                  CampusColors.peach, () => _open(NoticePage(store: store))),
-              _feature('Achados e perdidos', 'Itens encontrados', Icons.search_outlined,
-                  CampusColors.mint, () => _open(FoundPage(store: store))),
-              _feature('Eventos', 'Programação do campus', Icons.confirmation_num_outlined,
-                  CampusColors.violet, () => _open(EventsPage(store: store))),
-            ],
-          );
-        }),
-        const SizedBox(height: 29),
-        SectionHeading('Avisos recentes', trailing: TextButton(
-          onPressed: () => _open(NoticePage(store: store)),
-          child: Text('Ver todos'),
-        )),
-        if (latest.isEmpty)
-          const EmptyState(icon: Icons.notifications_none, title: 'Nenhum aviso por enquanto', subtitle: 'As notícias aparecerão aqui.'),
-        if (latest.isNotEmpty)
-          SoftCard(
-            color: CampusColors.neutral,
-            child: Column(children: [
-              for (var i = 0; i < (latest.length > 2 ? 2 : latest.length); i++) ...[
-                InkWell(
-                  onTap: () => _open(NoticePage(store: store)),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: i.isEven ? CampusColors.peach : CampusColors.lavenderBlue,
-                        child: Icon(i.isEven ? Icons.schedule_outlined : Icons.emoji_events_outlined, color: Theme.of(context).colorScheme.onSurface),
+              if (showDecoration)
+                Positioned(
+                  key: const Key('event_banner_decoration'),
+                  right: -52,
+                  top: -90,
+                  child: IgnorePointer(
+                    child: Transform.rotate(
+                      angle: .45,
+                      child: Container(
+                        width: 165,
+                        height: 280,
+                        decoration: BoxDecoration(
+                          color: CampusColors.red,
+                          borderRadius: BorderRadius.circular(48),
+                        ),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(latest[i].title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                        Text(latest[i].message, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                      ])),
-                      const Icon(Icons.chevron_right, size: 25),
-                    ]),
+                    ),
                   ),
                 ),
-                if (i == 0 && latest.length > 1) const Divider(height: 20),
-              ],
-            ]),
-          ),
-      ],
-    ));
-  }
-
-  Widget _feature(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) =>
-      Material(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Color.lerp(color, const Color(0xFF151515), .78)! : color,
-        borderRadius: BorderRadius.circular(25),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(25),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(icon, size: 29, color: Theme.of(context).colorScheme.onSurface),
-              const Spacer(),
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 17, fontWeight: FontWeight.w700)),
-              Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12)),
-            ]),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 25, 24, 26),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: textMaxWidth),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('PRÓXIMO EVENTO', style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      )),
+                      const SizedBox(height: 9),
+                      Text(
+                        event?.title ?? 'Acompanhe os próximos eventos',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        event == null
+                            ? 'Confira a programação dos próximos eventos'
+                            : '${formatDate(event!.date)} · ${event!.time}',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 17),
+                      FilledButton.icon(
+                        onPressed: onOpenEvents,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: CampusColors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.arrow_forward, size: 17),
+                        label: const Text('Ver programação'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
-
-  Widget _agenda(AppStore store) => CenterColumn(child: ListView(
-        padding: const EdgeInsets.fromLTRB(22, 28, 22, 30),
-        children: [
-          Text('Minha agenda', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 7),
-          Text('Organize os espaços e acompanhe os eventos do campus.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 26),
-          _agendaButton('Reservas de salas', 'Consulte os horários disponíveis e as reservas existentes.',
-              Icons.meeting_room_outlined, CampusColors.lavenderBlue,
-              () => _open(ReservationPage(store: store))),
-          const SizedBox(height: 14),
-          _agendaButton('Eventos', 'Veja a programação acadêmica divulgada pela coordenação.',
-              Icons.event_available_outlined, CampusColors.violet,
-              () => _open(EventsPage(store: store))),
-          const SizedBox(height: 27),
-          const SectionHeading('Resumo'),
-          SoftCard(
-            color: CampusColors.neutral,
-            child: Row(children: [
-              Expanded(child: _summaryNumber('${store.reservations.length}', 'reservas')),
-              const SizedBox(height: 55, child: VerticalDivider()),
-              Expanded(child: _summaryNumber('${store.events.length}', 'eventos')),
-            ]),
-          ),
-        ],
-      ));
-
-  Widget _summaryNumber(String number, String title) => Column(children: [
-    Text(number, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
-    Text(title, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-  ]);
-
-  Widget _agendaButton(String title, String subtitle, IconData icon, Color color, VoidCallback action) =>
-      Material(color: Theme.of(context).brightness == Brightness.dark
-          ? Color.lerp(color, const Color(0xFF151515), .78)! : color,
-          borderRadius: BorderRadius.circular(22), child: InkWell(
-        onTap: action,
-        borderRadius: BorderRadius.circular(22),
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Row(children: [
-            Icon(icon, size: 36),
-            const SizedBox(width: 19),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(subtitle),
-            ])),
-            const Icon(Icons.chevron_right),
-          ]),
-        ),
-      ));
-
-  Widget _profile(AppStore store) {
-    final user = store.currentUser!;
-    final role = user.isLeader ? 'Líder' : user.canManage ? 'Professor' : 'Aluno';
-    return CenterColumn(child: ListView(
-      padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
-      children: [
-        Text('Meu perfil', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 26),
-        SoftCard(child: Row(children: [
-          CircleAvatar(radius: 34, backgroundColor: CampusColors.lavenderBlue,
-              child: const Icon(Icons.person_outline, size: 33, color: CampusColors.navy)),
-          const SizedBox(width: 17),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(user.name, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 5),
-            Pill(role),
-            if (!user.isLeader) ...[
-              const SizedBox(height: 6),
-              Text('Curso: ${user.course ?? 'Não informado'}',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
-          ])),
-        ])),
-        const SizedBox(height: 17),
-        SoftCard(color: CampusColors.neutral, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Permissões da conta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 7),
-          Text(user.isLeader ? 'Você pode analisar solicitações e gerenciar os módulos.' :
-            user.canManage ? 'Você pode publicar avisos, eventos e criar reservas.' :
-            'Você pode ver os módulos e publicar itens e caronas.',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 15),
-          PrimaryAction(
-            icon: Icons.verified_user_outlined,
-            label: store.isLeader ? 'Analisar solicitações' : 'Permissão de professor',
-            onPressed: () => _open(PermissionsPage(store: store)),
-          ),
-        ])),
-        const SizedBox(height: 17),
-        SoftCard(child: SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: Text('Tema escuro', style: TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text('Alterar entre aparência clara e escura'),
-          secondary: Icon(store.darkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined),
-          value: store.darkMode,
-          onChanged: (value) => store.setDarkMode(value),
-        )),
-        if (!user.isLeader) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _open(CoursePage(store: store)),
-            icon: const Icon(Icons.school_outlined),
-            label: Text('Alterar meu curso'),
-          ),
-        ],
-        if (user.isLeader) ...[
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _open(CoursesPage(store: store)),
-            icon: const Icon(Icons.school_outlined),
-            label: Text('Gerenciar cursos'),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _open(RoomsPage(store: store)),
-            icon: const Icon(Icons.edit_outlined),
-            label: Text('Gerenciar laboratórios e salas'),
-          ),
-        ],
-        const SizedBox(height: 24),
-        OutlinedButton.icon(
-          onPressed: () => store.logout(),
-          icon: const Icon(Icons.logout),
-          label: Text('Sair da conta'),
-          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 52)),
-        ),
-        const SizedBox(height: 18),
-        Text('ConnectVertix · versão demonstrativa (dados locais neste dispositivo)',
-          textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      ],
-    ));
-  }
+    },
+  );
 }
